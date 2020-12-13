@@ -1,0 +1,83 @@
+﻿<Window x:Class="PaletteExtractor.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:PaletteExtractor"
+        mc:Ignorable="d"
+        Title="MainWindow" MinHeight="500" Width="800" MinWidth="800" MaxWidth="800">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="4*"/>
+            <RowDefinition Height="4*"/>
+            <RowDefinition/>
+        </Grid.RowDefinitions>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition Width="3*"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Margin="5">
+                <Button Content="Open File(s)" Margin="10" MaxWidth="120" MaxHeight="25" Click="OpenFiles"/>
+                <Label Content="Sort By:"/>
+                <Grid Margin="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="3*"/>
+                        <ColumnDefinition Width="3*"/>
+                    </Grid.ColumnDefinitions>
+                    <RadioButton Grid.Column="0" GroupName="SortBy" Content="Hue" IsChecked="True" FontSize="10" Click="ChangeSortMethod" />
+                    <RadioButton Grid.Column="1" GroupName="SortBy" Content="Saturation" FontSize="10" Click="ChangeSortMethod"/>
+                    <RadioButton Grid.Column="2" GroupName="SortBy" Content="Brightness" FontSize="10" Click="ChangeSortMethod"/>
+                </Grid>
+                <Grid Margin="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="3*"/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition/>
+                        <RowDefinition/>
+                        <RowDefinition/>
+                        <RowDefinition/>
+                    </Grid.RowDefinitions>
+                    <Label Content="Tile size (x*x):" Grid.Row="0" Grid.Column="0" />
+                    <Label Content="Colors per row:" Grid.Row="1" Grid.Column="0" />
+                    <Label Content="Max Colors in Palette:" Grid.Row="2" Grid.Column="0" />
+                    <TextBox x:Name="txtTileSize" Grid.Row="0" Grid.Column="1" PreviewTextInput="ValidateTextIsNumeric" Text="{Binding TileSize}" MaxHeight="20"/>
+                    <TextBox x:Name="txtColorsPerRow" Grid.Row="1" Grid.Column="1" PreviewTextInput="ValidateTextIsNumeric" Text="{Binding ColorsPerRow}" MaxHeight="20"/>
+                    <TextBox x:Name="txtMaxColors" Grid.Row="2" Grid.Column="1" PreviewTextInput="ValidateTextIsNumeric" Text="{Binding MaxColors}" MaxHeight="20"/>
+                </Grid>
+                <Button Content="Generate Palette" Margin="10" MaxWidth="120" MaxHeight="25" Click="GeneratePalette"/>
+            </StackPanel>
+            <ListView ItemsSource="{Binding Files}"  Grid.Column="1" Margin="5">
+                <ListView.Resources>
+                    <Style TargetType="GridViewColumnHeader">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                    </Style>
+                </ListView.Resources>
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Width="600"/>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+        </Grid>
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition/>
+                <RowDefinition/>
+            </Grid.RowDefinitions>
+            <Button Grid.Column="1" MaxWidth="120" MaxHeight="25" Content="Export" Click="ExportPalette" />
+            <ProgressBar x:Name="progressBar" Margin="16,0,0,4" Grid.Row="1" HorizontalAlignment="Left" Width="100" Height="12" MaxHeight="12" />
+        </Grid>
+        <ScrollViewer Grid.Row="1" Margin="5">
+            <Image x:Name="imgPalette" Margin="10" Source="{Binding PaletteSource}" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+        </ScrollViewer>
+    </Grid>
+</Window>
