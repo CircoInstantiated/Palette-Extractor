@@ -22,8 +22,8 @@ namespace PaletteExtractor
         private bool isProcessing = false;
         private PaletteExtractorViewModel viewModel = new PaletteExtractorViewModel();
         private PaletteBuilder paletteBuilder = new PaletteBuilder();
-        private readonly Regex greaterThanZeroTest = new Regex("^[1-9][0-9]*$");
-        private readonly Regex oneToFiveHundredTest = new Regex("^(?:500|[1-9]?[0-9])$");
+        private readonly Regex oneToSixteenTest = new Regex("^([1-9]|1[0-6])$");
+        private readonly Regex oneToFiveHundredTwelveTest = new Regex("^(?:50[0-9]|51[0-2]|[1-4]?[0-9]?[0-9])$");
         private readonly string fileFilter;
         private readonly string validExtensions;
         private Comparison<Color> sortBy = (a, b) => a.GetHue().CompareTo(b.GetHue());
@@ -45,22 +45,29 @@ namespace PaletteExtractor
             validExtensions = extensions.ToString();
         }
 
-        private async void OpenFiles(object sender, RoutedEventArgs e)
+        private void AddFiles(object sender, RoutedEventArgs e)
         {
             if (isProcessing)
                 return;
             isProcessing = true;
-            await Task.Run(() => {
-                var fileDialog = new OpenFileDialog();
-                fileDialog.Multiselect = true;
-                fileDialog.DefaultExt = "png";
-                fileDialog.Filter = fileFilter;
-                if (fileDialog.ShowDialog() == true)
-                {
-                    var files = fileDialog.FileNames?.Select(file => new FileInfo(file)).Where(file => validExtensions.Contains(file.Extension.ToLowerInvariant()));
+            var fileDialog = new OpenFileDialog();
+            fileDialog.Multiselect = true;
+            fileDialog.DefaultExt = "png";
+            fileDialog.Filter = fileFilter;
+            if (fileDialog.ShowDialog() == true)
+            {
+                var files = fileDialog.FileNames?.Select(file => new FileInfo(file)).Where(file => validExtensions.Contains(file.Extension.ToLowerInvariant()));
+                if (viewModel.Files == null)
                     viewModel.Files = new ObservableCollection<FileInfo>(files);
+                else
+                {
+                    foreach (var file in files)
+                    {
+                        if (!viewModel.Files.Any(f => f.Name.Equals(file.Name)))
+                            viewModel.Files.Add(file);
+                    }
                 }
-            });
+            }
             isProcessing = false;
         }
 
@@ -89,7 +96,7 @@ namespace PaletteExtractor
             var file = string.Empty;
             var fileDialog = new SaveFileDialog();
             fileDialog.ValidateNames = true;
-            fileDialog.FileName = $"Palette {DateTime.Now:MMddyyyy-HHmmss}.png";
+            fileDialog.FileName = $"Palette ({viewModel.MaxColors}) {DateTime.Now:MMddyyyy-HHmmss}.png";
             fileDialog.DefaultExt = "png";
             fileDialog.Filter = "PNG Files (*.png)|*.png;";
             if (fileDialog.ShowDialog() == true)
@@ -137,7 +144,7 @@ namespace PaletteExtractor
             return image;
         }
 
-        private void ValidateTextIsNumeric(object sender, TextCompositionEventArgs e)
+        private void ValidateTextIsWithinNumericRange1To16(object sender, TextCompositionEventArgs e)
         {
             if (isProcessing)
                 e.Handled = true;
@@ -145,7 +152,7 @@ namespace PaletteExtractor
             {
                 var textBox = e.Source as TextBox;
                 var updatedText = textBox.SelectedText?.Length > 0 ? textBox.Text?.Replace(textBox.SelectedText, e.Text) : textBox.Text + e.Text;
-                var matched = greaterThanZeroTest.IsMatch(updatedText);
+                var matched = oneToSixteenTest.IsMatch(updatedText);
                 e.Handled = !matched;
             }
         }
@@ -158,7 +165,20 @@ namespace PaletteExtractor
             {
                 var textBox = e.Source as TextBox;
                 var updatedText = textBox.SelectedText?.Length > 0 ? textBox.Text?.Replace(textBox.SelectedText, e.Text) : textBox.Text + e.Text;
-                var matched = oneToFiveHundredTest.IsMatch(updatedText);
+                var matched = oneToFiveHundredTwelveTest.IsMatch(updatedText);
+                e.Handled = !matched;
+            }
+        }
+
+        private void ValidateTextIsWithinNumericRange1To512(object sender, TextCompositionEventArgs e)
+        {
+            if (isProcessing)
+                e.Handled = true;
+            else
+            {
+                var textBox = e.Source as TextBox;
+                var updatedText = textBox.SelectedText?.Length > 0 ? textBox.Text?.Replace(textBox.SelectedText, e.Text) : textBox.Text + e.Text;
+                var matched = oneToFiveHundredTwelveTest.IsMatch(updatedText);
                 e.Handled = !matched;
             }
         }
@@ -178,6 +198,11 @@ namespace PaletteExtractor
                     sortBy = (a, b) => a.GetSaturation().CompareTo(b.GetSaturation());
                     break;
             }
+        }
+
+        private void ClearFiles(object sender, RoutedEventArgs e)
+        {
+            viewModel.Files?.Clear();
         }
     }
 }

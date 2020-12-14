@@ -18,7 +18,14 @@
                 <ColumnDefinition Width="3*"/>
             </Grid.ColumnDefinitions>
             <StackPanel Margin="5">
-                <Button Content="Open File(s)" Margin="10" MaxWidth="120" MaxHeight="25" Click="OpenFiles"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+                    <Button Content="Add File(s)" Margin="10" MaxWidth="120" MaxHeight="25" Click="AddFiles"/>
+                    <Button Grid.Column="1" Content="Clear" Margin="10" MaxWidth="120" MaxHeight="25" Click="ClearFiles"/>
+                </Grid>
                 <Label Content="Sort By:"/>
                 <Grid Margin="1">
                     <Grid.ColumnDefinitions>
@@ -45,10 +52,10 @@
                     <Label Content="Colors per row:" Grid.Row="1" Grid.Column="0" />
                     <Label Content="Max Colors in Palette:" Grid.Row="2" Grid.Column="0" />
                     <Label Content="Max Iterations:" Grid.Row="3" Grid.Column="0" />
-                    <TextBox x:Name="txtTileSize" Grid.Row="0" Grid.Column="1" PreviewTextInput="ValidateTextIsNumeric" Text="{Binding TileSize}" MaxHeight="20"/>
-                    <TextBox x:Name="txtColorsPerRow" Grid.Row="1" Grid.Column="1" PreviewTextInput="ValidateTextIsNumeric" Text="{Binding ColorsPerRow}" MaxHeight="20"/>
-                    <TextBox x:Name="txtMaxColors" Grid.Row="2" Grid.Column="1" PreviewTextInput="ValidateTextIsNumeric" Text="{Binding MaxColors}" MaxHeight="20"/>
-                    <TextBox x:Name="txtMaxIterations" Grid.Row="3" Grid.Column="1" PreviewTextInput="ValidateTextIsWithinNumericRange1To500" Text="{Binding MaxIterations}" MaxHeight="20" />
+                    <TextBox x:Name="txtTileSize" Grid.Row="0" Grid.Column="1" PreviewTextInput="ValidateTextIsWithinNumericRange1To16" Text="{Binding TileSize}" MaxHeight="20"/>
+                    <TextBox x:Name="txtColorsPerRow" Grid.Row="1" Grid.Column="1" PreviewTextInput="ValidateTextIsWithinNumericRange1To512" Text="{Binding ColorsPerRow}" MaxHeight="20"/>
+                    <TextBox x:Name="txtMaxColors" Grid.Row="2" Grid.Column="1" PreviewTextInput="ValidateTextIsWithinNumericRange1To512" Text="{Binding MaxColors}" MaxHeight="20"/>
+                    <TextBox x:Name="txtMaxIterations" Grid.Row="3" Grid.Column="1" PreviewTextInput="ValidateTextIsWithinNumericRange1To512" Text="{Binding MaxIterations}" MaxHeight="20" />
                 </Grid>
                 <Button Content="Generate Palette" Margin="10" MaxWidth="120" MaxHeight="25" Click="GeneratePalette"/>
             </StackPanel>
