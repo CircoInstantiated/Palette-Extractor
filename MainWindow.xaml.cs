@@ -11,7 +11,6 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Media.Animation;
 
 namespace PaletteExtractor
 {
@@ -78,7 +77,7 @@ namespace PaletteExtractor
             isProcessing = true;
             var progress = new Progress<float>(value => viewModel.Progress = value * 100);
             await paletteBuilder.Calculate(viewModel.Files, sortBy, viewModel.MaxColors, viewModel.MaxIterations, progress);
-            viewModel.Image = await paletteBuilder.ToBitmap(viewModel.TileSize, viewModel.ColorsPerRow);
+            viewModel.Image = await GenerateBitmap(paletteBuilder.Palette, viewModel.TileSize, viewModel.ColorsPerRow);
             isProcessing = false;
         }
 
@@ -96,8 +95,46 @@ namespace PaletteExtractor
             if (fileDialog.ShowDialog() == true)
                 file = fileDialog.FileName;
             if (!string.IsNullOrWhiteSpace(file))
-                await paletteBuilder.Export(file, ImageFormat.Png, viewModel.TileSize, viewModel.ColorsPerRow);
+            {
+                using (var bitmap = await GenerateBitmap(paletteBuilder.Palette, viewModel.TileSize, viewModel.ColorsPerRow))
+                {
+                    bitmap.Save(file, ImageFormat.Png);
+                }
+            }
             isProcessing = false;
+        }
+
+        private async Task<Bitmap> GenerateBitmap(Color[] palette, int tileSize, int colorsPerRow)
+        {
+            var length = palette.Length;
+            if (length < 1)
+                return null;
+            var width = length < colorsPerRow ? length * tileSize : colorsPerRow * tileSize;
+            var height = length < colorsPerRow ? tileSize : length / colorsPerRow * tileSize;
+            if (length % colorsPerRow > 0)
+                height += tileSize;
+            var image = new Bitmap(width, height);
+            await Task.Run(() => {
+                var context = Graphics.FromImage(image);
+                var positionX = 0;
+                var positionY = 0;
+                var colorsPlaced = 0;
+                for (var i = 0; i < length; i++)
+                {
+                    var color = palette[i];
+                    var brush = new SolidBrush(color);
+                    context.FillRectangle(brush, positionX, positionY, tileSize, tileSize);
+                    colorsPlaced++;
+                    if (colorsPlaced >= colorsPerRow)
+                    {
+                        positionX = colorsPlaced = 0;
+                        positionY += tileSize;
+                    }
+                    else
+                        positionX += tileSize;
+                }
+            });
+            return image;
         }
 
         private void ValidateTextIsNumeric(object sender, TextCompositionEventArgs e)

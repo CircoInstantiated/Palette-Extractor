@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -50,52 +49,6 @@ namespace PaletteExtractor
                 progress?.Report(100f);
                 Palette = p.ToArray();
             });
-        }
-
-        public async Task<bool> Export(string filePath, ImageFormat format, int tileSize, int colorsPerRow)
-        {
-            if (tileSize < 1 || Palette?.Length < 1)
-                return false;
-            using (var bitmap = await ToBitmap(tileSize, colorsPerRow))
-            {
-                await Task.Run(() => {
-                    bitmap.Save(filePath, format);
-                });
-            }
-            return true;
-        }
-
-        public async Task<Bitmap> ToBitmap(int tileSize, int colorsPerRow)
-        {
-            var length = Palette?.Length ?? 0;
-            if (length < 1)
-                return null;
-            var width = length < colorsPerRow ? length * tileSize : colorsPerRow * tileSize;
-            var height = length < colorsPerRow ? tileSize : length / colorsPerRow * tileSize;
-            if (length % colorsPerRow > 0)
-                height += tileSize;
-            var image = new Bitmap(width, height);
-            await Task.Run(() => {
-                var context = Graphics.FromImage(image);
-                var positionX = 0;
-                var positionY = 0;
-                var colorsPlaced = 0;
-                for (var i = 0; i < Palette.Length; i++)
-                {
-                    var color = Palette[i];
-                    var brush = new SolidBrush(color);
-                    context.FillRectangle(brush, positionX, positionY, tileSize, tileSize);
-                    colorsPlaced++;
-                    if (colorsPlaced >= colorsPerRow)
-                    {
-                        positionX = colorsPlaced = 0;
-                        positionY += tileSize;
-                    }
-                    else
-                        positionX += tileSize;
-                }
-            });
-            return image;
         }
 
         private IEnumerable<int> ExtractPalette(Bitmap bitmap)
