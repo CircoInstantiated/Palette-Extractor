@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media.Animation;
 
 namespace PaletteExtractor
 {
@@ -23,7 +24,7 @@ namespace PaletteExtractor
         private PaletteExtractorViewModel viewModel = new PaletteExtractorViewModel();
         private PaletteBuilder paletteBuilder = new PaletteBuilder();
         private readonly Regex greaterThanZeroTest = new Regex("^[1-9][0-9]*$");
-        private readonly Regex zeroToOneHundredTest = new Regex("^(?:100|[1-9]?[0-9])$");
+        private readonly Regex oneToFiveHundredTest = new Regex("^(?:500|[1-9]?[0-9])$");
         private readonly string fileFilter;
         private readonly string validExtensions;
         private Comparison<Color> sortBy = (a, b) => a.GetHue().CompareTo(b.GetHue());
@@ -73,8 +74,10 @@ namespace PaletteExtractor
                 MessageBox.Show("Please select one or more files from which to generate the palette.");
                 return;
             }
+            viewModel.Progress = 0;
             isProcessing = true;
-            await paletteBuilder.Calculate(viewModel.Files, sortBy, viewModel.MaxColors);
+            var progress = new Progress<float>(value => viewModel.Progress = value * 100);
+            await paletteBuilder.Calculate(viewModel.Files, sortBy, viewModel.MaxColors, viewModel.MaxIterations, progress);
             viewModel.Image = await paletteBuilder.ToBitmap(viewModel.TileSize, viewModel.ColorsPerRow);
             isProcessing = false;
         }
@@ -110,7 +113,7 @@ namespace PaletteExtractor
             }
         }
 
-        private void ValidateTextIsWithinNumericRange0To100(object sender, TextCompositionEventArgs e)
+        private void ValidateTextIsWithinNumericRange1To500(object sender, TextCompositionEventArgs e)
         {
             if (isProcessing)
                 e.Handled = true;
@@ -118,7 +121,7 @@ namespace PaletteExtractor
             {
                 var textBox = e.Source as TextBox;
                 var updatedText = textBox.SelectedText?.Length > 0 ? textBox.Text?.Replace(textBox.SelectedText, e.Text) : textBox.Text + e.Text;
-                var matched = zeroToOneHundredTest.IsMatch(updatedText);
+                var matched = oneToFiveHundredTest.IsMatch(updatedText);
                 e.Handled = !matched;
             }
         }

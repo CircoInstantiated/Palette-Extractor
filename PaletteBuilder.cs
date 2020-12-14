@@ -12,18 +12,24 @@ namespace PaletteExtractor
     {
         //https://github.com/xanderlewis/colour-palettes
         private static readonly Random random = new Random();
+        private int tasksCompleted = 0;
+        private float totalTasks = 0;
         private Comparison<Color> sortByHue = (a, b) => a.GetHue().CompareTo(b.GetHue());
         public Color[] Palette { get; private set; }
 
-        public async Task Calculate(IEnumerable<FileInfo> files, Comparison<Color> sortBy = null, int maxColors = 0, int maxKMeansInterations = 500)
+        public async Task Calculate(IEnumerable<FileInfo> files, Comparison<Color> sortBy = null, int maxColors = 0, int maxKMeansInterations = 200, IProgress<float> progress = null)
         {
+            totalTasks = files.Count() + maxKMeansInterations + 1;
             await Task.Run(() => {
                 var argbValues = new List<int>();
+                tasksCompleted = 0;
                 foreach (var file in files)
                 {
                     using (var image = new Bitmap(file.OpenRead()))
                     {
                         argbValues.AddRange(ExtractPalette(image));
+                        tasksCompleted++;
+                        progress?.Report(tasksCompleted / totalTasks);
                     }
                 }
                 argbValues.Sort();
@@ -32,14 +38,16 @@ namespace PaletteExtractor
                 {
                     var color = AveragedColor(palette);
                     palette = new Color[] { color };
+                    progress?.Report(100f);
                 }
                 else if (maxColors > 0 && maxColors < palette.Length)
                 {
-                    var clusters = CalculateKMeanClusters(palette, maxColors, maxKMeansInterations, centroids: GetCentroidsByUsage(argbValues, maxColors));
+                    var clusters = CalculateKMeanClusters(palette, maxColors, maxKMeansInterations, centroids: GetCentroidsByUsage(argbValues, maxColors), progress: progress);
                     palette = AveragePalette(clusters);
                 }
                 var p = new List<Color>(palette);
                 p.Sort(sortBy ?? sortByHue);
+                progress?.Report(100f);
                 Palette = p.ToArray();
             });
         }
@@ -63,7 +71,9 @@ namespace PaletteExtractor
             if (length < 1)
                 return null;
             var width = length < colorsPerRow ? length * tileSize : colorsPerRow * tileSize;
-            var height = length < colorsPerRow ? tileSize : Palette.Length / colorsPerRow * tileSize;
+            var height = length < colorsPerRow ? tileSize : length / colorsPerRow * tileSize;
+            if (length % colorsPerRow > 0)
+                height += tileSize;
             var image = new Bitmap(width, height);
             await Task.Run(() => {
                 var context = Graphics.FromImage(image);
@@ -149,7 +159,7 @@ namespace PaletteExtractor
             return colorCounts.Values.Top(max).Select(i => Color.FromArgb(i)).ToArray();
         }
 
-        private List<Color>[] CalculateKMeanClusters(Color[] palette, int maxColors, int maxIterations, int iterations = 0, Color[] centroids = null)
+        private List<Color>[] CalculateKMeanClusters(Color[] palette, int maxColors, int maxIterations, int iterations = 0, Color[] centroids = null, IProgress<float> progress = null)
         {
             var currentClusters = default(List<Color>[]);
             var previousCluster = default(List<Color>[]);
@@ -159,15 +169,20 @@ namespace PaletteExtractor
                 previousCluster = currentClusters;
                 currentClusters = GetClustedDataPoints(palette, centroids);
                 iterations++;
+                tasksCompleted++;
+                progress?.Report(tasksCompleted / totalTasks);
                 if (currentClusters.Any((c) => c.Count < 1))
                 {
                     currentClusters = null;
                     previousCluster = null;
                     centroids = null;
-                    return CalculateKMeanClusters(palette, maxColors, maxIterations, iterations);
+                    return CalculateKMeanClusters(palette, maxColors, maxIterations, iterations, null, progress);
                 }
                 if (ClustersMatch(currentClusters, previousCluster))
+                {
+                    progress?.Report(100f);
                     break;
+                }
                 centroids = AveragePalette(currentClusters);
             }
             return currentClusters;

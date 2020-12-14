@@ -44,9 +44,11 @@
                     <Label Content="Tile size (x*x):" Grid.Row="0" Grid.Column="0" />
                     <Label Content="Colors per row:" Grid.Row="1" Grid.Column="0" />
                     <Label Content="Max Colors in Palette:" Grid.Row="2" Grid.Column="0" />
+                    <Label Content="Max Iterations:" Grid.Row="3" Grid.Column="0" />
                     <TextBox x:Name="txtTileSize" Grid.Row="0" Grid.Column="1" PreviewTextInput="ValidateTextIsNumeric" Text="{Binding TileSize}" MaxHeight="20"/>
                     <TextBox x:Name="txtColorsPerRow" Grid.Row="1" Grid.Column="1" PreviewTextInput="ValidateTextIsNumeric" Text="{Binding ColorsPerRow}" MaxHeight="20"/>
                     <TextBox x:Name="txtMaxColors" Grid.Row="2" Grid.Column="1" PreviewTextInput="ValidateTextIsNumeric" Text="{Binding MaxColors}" MaxHeight="20"/>
+                    <TextBox x:Name="txtMaxIterations" Grid.Row="3" Grid.Column="1" PreviewTextInput="ValidateTextIsWithinNumericRange1To500" Text="{Binding MaxIterations}" MaxHeight="20" />
                 </Grid>
                 <Button Content="Generate Palette" Margin="10" MaxWidth="120" MaxHeight="25" Click="GeneratePalette"/>
             </StackPanel>
@@ -74,7 +76,8 @@
                 <RowDefinition/>
             </Grid.RowDefinitions>
             <Button Grid.Column="1" MaxWidth="120" MaxHeight="25" Content="Export" Click="ExportPalette" />
-            <ProgressBar x:Name="progressBar" Margin="16,0,0,4" Grid.Row="1" HorizontalAlignment="Left" Width="100" Height="12" MaxHeight="12" />
+            <Label Content="Progress: " FontSize="10" Grid.Row="1" Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+            <ProgressBar x:Name="progressBar" Margin="0" Grid.Row="1" Grid.Column="2" HorizontalAlignment="Left" VerticalAlignment="Center" Width="250" Height="12" MaxHeight="12" Value="{Binding Progress}" />
         </Grid>
         <ScrollViewer Grid.Row="1" Margin="5">
             <Image x:Name="imgPalette" Margin="10" Source="{Binding PaletteSource}" RenderOptions.BitmapScalingMode="NearestNeighbor" />
