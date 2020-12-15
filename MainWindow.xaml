@@ -57,6 +57,16 @@
                     <TextBox x:Name="txtMaxColors" Grid.Row="2" Grid.Column="1" PreviewTextInput="ValidateTextIsWithinNumericRange1To512" Text="{Binding MaxColors}" MaxHeight="20"/>
                     <TextBox x:Name="txtMaxIterations" Grid.Row="3" Grid.Column="1" PreviewTextInput="ValidateTextIsWithinNumericRange1To512" Text="{Binding MaxIterations}" MaxHeight="20" />
                 </Grid>
+                <Label Content="Export Format:"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="3*"/>
+                        <ColumnDefinition Width="3*"/>
+                    </Grid.ColumnDefinitions>
+                    <RadioButton Grid.Column="1" GroupName="ExportFormat" Content="PNG" IsChecked="True" FontSize="10" Click="ChangeExportFormat" />
+                    <RadioButton Grid.Column="2" GroupName="ExportFormat" Content="Jasc PAL" FontSize="10" Click="ChangeExportFormat"/>
+                </Grid>
                 <Button Content="Generate Palette" Margin="10" MaxWidth="120" MaxHeight="25" Click="GeneratePalette"/>
             </StackPanel>
             <ListView ItemsSource="{Binding Files}"  Grid.Column="1" Margin="5">

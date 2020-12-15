@@ -10,36 +10,30 @@ namespace PaletteExtractor
     sealed class PaletteBuilder
     {
         //https://github.com/xanderlewis/colour-palettes
+        private const int min = 1;
+        private const int max = 512;
         private static readonly Random random = new Random();
         private int tasksCompleted = 0;
         private float totalTasks = 0;
         private Comparison<Color> sortByHue = (a, b) => a.GetHue().CompareTo(b.GetHue());
         public Color[] Palette { get; private set; }
 
-        public async Task Calculate(IEnumerable<FileInfo> files, Comparison<Color> sortBy = null, int maxColors = 0, int maxKMeansInterations = 200, IProgress<float> progress = null)
+        public async Task Calculate(IEnumerable<FileInfo> files, int maxColors, int maxKMeansInterations = max, Comparison<Color> sortBy = null, IProgress<float> progress = null)
         {
-            totalTasks = files.Count() + maxKMeansInterations + 1;
+            if (maxColors < min || maxColors > max)
+                throw new ArgumentException($"Arugment maxColors must be a value from {min} to {max}.");
+            totalTasks = files.Count() + maxKMeansInterations + min;
             await Task.Run(() => {
-                var argbValues = new List<int>();
                 tasksCompleted = 0;
-                foreach (var file in files)
-                {
-                    using (var image = new Bitmap(file.OpenRead()))
-                    {
-                        argbValues.AddRange(ExtractPalette(image));
-                        tasksCompleted++;
-                        progress?.Report(tasksCompleted / totalTasks);
-                    }
-                }
-                argbValues.Sort();
+                var argbValues = ExtractArgbValues(files, progress);
                 var palette = argbValues.Distinct().Select((argb) => Color.FromArgb(argb)).ToArray();
-                if (maxColors == 1)
+                if (maxColors == min)
                 {
                     var color = AveragedColor(palette);
                     palette = new Color[] { color };
                     progress?.Report(100f);
                 }
-                else if (maxColors > 0 && maxColors < palette.Length)
+                else if (maxColors < palette.Length)
                 {
                     var clusters = CalculateKMeanClusters(palette, maxColors, maxKMeansInterations, centroids: GetCentroidsByUsage(argbValues, maxColors), progress: progress);
                     palette = AveragePalette(clusters);
@@ -49,6 +43,47 @@ namespace PaletteExtractor
                 progress?.Report(100f);
                 Palette = p.ToArray();
             });
+        }
+
+        private List<int> ExtractArgbValues(IEnumerable<FileInfo> files, IProgress<float> progress = null)
+        {
+            var argbValues = new List<int>();
+            foreach (var file in files)
+            {
+                if (file.Name.EndsWith("pal"))
+                {
+                    using (var reader = new StreamReader(file.OpenRead()))
+                    {
+                        var line = reader.ReadLine();
+                        if (line.ToLowerInvariant() != "jasc-pal")
+                            throw new FileFormatException($"{file.Name} is not a valid Jasc-PAL file.");
+                        //skip 2 lines to read past the remaing header information
+                        reader.ReadLine();
+                        reader.ReadLine();
+                        do
+                        {
+                            line = reader.ReadLine();
+                            var rgb = line.Split(' ');
+                            var red = byte.Parse(rgb[0]);
+                            var green = byte.Parse(rgb[1]);
+                            var blue = byte.Parse(rgb[2]);
+                            argbValues.Add(Color.FromArgb(red, green, blue).ToArgb());
+                        }
+                        while (!reader.EndOfStream);
+                    }
+                }
+                else
+                {
+                    using (var image = new Bitmap(file.OpenRead()))
+                    {
+                        argbValues.AddRange(ExtractPalette(image));
+                    }
+                }
+                tasksCompleted++;
+                progress?.Report(tasksCompleted / totalTasks);
+            }
+            argbValues.Sort();
+            return argbValues;
         }
 
         private IEnumerable<int> ExtractPalette(Bitmap bitmap)
@@ -66,23 +101,20 @@ namespace PaletteExtractor
                 return Color.Transparent;
             else if (colors.Length < 2)
                 return colors[0];
-            var alphaSquared = new double[colors.Length];
             var redsSquared = new double[colors.Length];
             var greensSquared = new double[colors.Length];
             var bluesSquared = new double[colors.Length];
             for (var i = 0; i < colors.Length; i++)
             {
                 var color = colors[i];
-                alphaSquared[i] = Math.Pow(color.A, 2);
                 redsSquared[i] = Math.Pow(color.R, 2);
                 greensSquared[i] = Math.Pow(color.G, 2);
                 bluesSquared[i] = Math.Pow(color.B, 2);
-            }
-            var alpha = (int)Math.Sqrt(alphaSquared.Sum() / alphaSquared.Length);
+            };
             var red = (int)Math.Sqrt(redsSquared.Sum() / redsSquared.Length);
             var green = (int)Math.Sqrt(greensSquared.Sum() / greensSquared.Length);
             var blue = (int)Math.Sqrt(bluesSquared.Sum() / bluesSquared.Length);
-            return Color.FromArgb(alpha, red, green, blue);
+            return Color.FromArgb(red, green, blue);
         }
 
         private class ReverseDuplicateKeyComparer<T> : IComparer<T> where T : IComparable
@@ -185,8 +217,7 @@ namespace PaletteExtractor
 
         private float CalculateEuclidianDistance(ref Color source, ref Color evaluee)
         {
-            var distance = MathF.Pow(evaluee.A - source.A, 2);
-            distance += MathF.Pow(evaluee.R - source.R, 2);
+            var distance = MathF.Pow(evaluee.R - source.R, 2);
             distance += MathF.Pow(evaluee.G - source.G, 2);
             distance += MathF.Pow(evaluee.B - source.B, 2);
             return MathF.Sqrt(distance);

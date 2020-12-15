@@ -41,6 +41,8 @@ namespace PaletteExtractor
                 extensions.Append(codec.FilenameExtension.ToLowerInvariant());
                 filter.AppendFormat("|{0} ({1})|{1};", name, codec.FilenameExtension.ToLowerInvariant());
             }
+            filter.Append("|Jasc PAL Files (*.pal)|*.pal;");
+            extensions.Append(".pal");
             fileFilter = filter.ToString();
             validExtensions = extensions.ToString();
         }
@@ -83,8 +85,15 @@ namespace PaletteExtractor
             viewModel.Progress = 0;
             isProcessing = true;
             var progress = new Progress<float>(value => viewModel.Progress = value * 100);
-            await paletteBuilder.Calculate(viewModel.Files, sortBy, viewModel.MaxColors, viewModel.MaxIterations, progress);
-            viewModel.Image = await GenerateBitmap(paletteBuilder.Palette, viewModel.TileSize, viewModel.ColorsPerRow);
+            try
+            {
+                await paletteBuilder.Calculate(viewModel.Files, viewModel.MaxColors, viewModel.MaxIterations, sortBy, progress);
+                viewModel.Image = await GenerateBitmap(paletteBuilder.Palette, viewModel.TileSize, viewModel.ColorsPerRow);
+            }
+            catch(Exception ex)
+            {
+                MessageBox.Show(ex.Message, "AN ERROR HAS OCCURRED");
+            }
             isProcessing = false;
         }
 
@@ -95,19 +104,50 @@ namespace PaletteExtractor
             isProcessing = true;
             var file = string.Empty;
             var fileDialog = new SaveFileDialog();
+            var extension = default(string);
+            var filter = default(string);
+            var export = default(Action);
+            switch (viewModel.ExportFormat) 
+            {
+                case ExportFormat.JascPAL:
+                    extension = "pal";
+                    filter = "Jasc PAL Files (*.pal)|*.pal;";
+                    export = () =>
+                    {
+                        using (var writer = new StreamWriter(file))
+                        {
+                            writer.WriteLine("JASC-PAL");
+                            writer.WriteLine("0100");
+                            writer.WriteLine(paletteBuilder.Palette.Length);
+                            foreach (var color in paletteBuilder.Palette)
+                            {
+                                writer.Write($"{color.R:D3} ");
+                                writer.Write($"{color.G:D3} ");
+                                writer.Write($"{color.B:D3}{Environment.NewLine}");
+                            }
+                        }
+                    };
+                    break;
+                case ExportFormat.PNG:
+                    extension = "png";
+                    filter = "PNG Files (*.png)|*.png;";
+                    export = async () =>
+                    {
+                        using (var bitmap = await GenerateBitmap(paletteBuilder.Palette, viewModel.TileSize, viewModel.ColorsPerRow))
+                        {
+                            bitmap.Save(file, ImageFormat.Png);
+                        }
+                    };
+                    break;
+            }
             fileDialog.ValidateNames = true;
-            fileDialog.FileName = $"Palette ({viewModel.MaxColors}) {DateTime.Now:MMddyyyy-HHmmss}.png";
-            fileDialog.DefaultExt = "png";
-            fileDialog.Filter = "PNG Files (*.png)|*.png;";
+            fileDialog.FileName = $"Palette ({viewModel.MaxColors}) {DateTime.Now:MMddyyyy-HHmmss}.{extension}";
+            fileDialog.DefaultExt = extension;
+            fileDialog.Filter = filter;
             if (fileDialog.ShowDialog() == true)
                 file = fileDialog.FileName;
             if (!string.IsNullOrWhiteSpace(file))
-            {
-                using (var bitmap = await GenerateBitmap(paletteBuilder.Palette, viewModel.TileSize, viewModel.ColorsPerRow))
-                {
-                    bitmap.Save(file, ImageFormat.Png);
-                }
-            }
+                await Task.Run(() => export.Invoke());
             isProcessing = false;
         }
 
@@ -196,6 +236,20 @@ namespace PaletteExtractor
                     break;
                 case "saturation":
                     sortBy = (a, b) => a.GetSaturation().CompareTo(b.GetSaturation());
+                    break;
+            }
+        }
+
+        private void ChangeExportFormat(object sender, RoutedEventArgs e)
+        {
+            var button = sender as RadioButton;
+            switch (button.Content?.ToString().ToLowerInvariant())
+            {
+                case "jasc pal":
+                    viewModel.ExportFormat = ExportFormat.JascPAL;
+                    break;
+                default:
+                    viewModel.ExportFormat = ExportFormat.PNG;
                     break;
             }
         }
