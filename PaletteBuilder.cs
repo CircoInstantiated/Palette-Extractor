@@ -12,6 +12,7 @@ namespace PaletteExtractor
         //https://github.com/xanderlewis/colour-palettes
         private const int min = 1;
         private const int max = 512;
+        private static readonly int transparentArgb = Color.Transparent.ToArgb();
         private static readonly Random random = new Random();
         private int tasksCompleted = 0;
         private float totalTasks = 0;
@@ -74,9 +75,15 @@ namespace PaletteExtractor
                 }
                 else
                 {
-                    using (var image = new Bitmap(file.OpenRead()))
+                    using (var bitmap = new Bitmap(file.OpenRead()))
                     {
-                        argbValues.AddRange(ExtractPalette(image));
+                        for (var x = 0; x < bitmap.Width; x++)
+                            for (var y = 0; y < bitmap.Height; y++)
+                            {
+                                var argb = bitmap.GetPixel(x, y).ToArgb();
+                                if (argb != transparentArgb)
+                                    argbValues.Add(argb);
+                            }
                     }
                 }
                 tasksCompleted++;
@@ -84,15 +91,6 @@ namespace PaletteExtractor
             }
             argbValues.Sort();
             return argbValues;
-        }
-
-        private IEnumerable<int> ExtractPalette(Bitmap bitmap)
-        {
-            var palette = new List<int>();
-            for (var x = 0; x < bitmap.Width; x++)
-                for (var y = 0; y < bitmap.Height; y++)
-                    palette.Add(bitmap.GetPixel(x, y).ToArgb());
-            return palette;
         }
 
         private Color AveragedColor(params Color[] colors)
